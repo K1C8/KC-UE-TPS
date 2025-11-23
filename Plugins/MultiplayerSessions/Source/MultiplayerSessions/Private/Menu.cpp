@@ -184,6 +184,17 @@ void UMenu::PlayerNameTextBoxCommitted(const FText& InText, ETextCommit::Type Co
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::White, InText.ToString());
 	}
+
+	UGameInstance* GameInstance = GetGameInstance();
+	if (GameInstance)
+	{
+		RTPSGameInstanceSubsystem = GameInstance->GetSubsystem<URTPSGameInstanceSubsystem>();
+	}
+
+	if (RTPSGameInstanceSubsystem)
+	{
+		RTPSGameInstanceSubsystem->SetPlayerName(InText.ToString());
+	}
 }
 
 void UMenu::MenuTearDown()
