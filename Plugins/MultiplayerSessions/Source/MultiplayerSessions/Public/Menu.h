@@ -6,6 +6,7 @@
 #include "Blueprint/UserWidget.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Components/EditableTextBox.h"
+#include "RTPSGameInstanceSubsystem.h"
 #include "Menu.generated.h"
 
 /**
@@ -60,6 +61,7 @@ private:
 
 	// The subsystem designed to handle all online session functionality
 	class UMultiplayerSessionsSubsystem* MultiplayerSessionsSubsystem;
+	class URTPSGameInstanceSubsystem* RTPSGameInstanceSubsystem;
 
 	int32 NumPublicConnections{4};
 	FString MatchType{TEXT("FreeForAll")};

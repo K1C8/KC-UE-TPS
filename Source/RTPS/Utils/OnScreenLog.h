@@ -8,11 +8,11 @@
 /**
  * 
  */
-class RTPS_API OnScreenLog
+static class RTPS_API OnScreenLog
 {
 public:
-	OnScreenLog();
-	~OnScreenLog();
-	void OnScreenLogDisplay(const FString&);
+	/*OnScreenLog();
+	~OnScreenLog();*/
+	static void OnScreenLogDisplay(const FString&);
 	//static void OnScreenLogWarning(FText);
 };

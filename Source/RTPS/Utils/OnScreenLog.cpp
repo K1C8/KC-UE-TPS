@@ -5,13 +5,13 @@
 #include "Engine/Engine.h"
 #include <string>
 
-OnScreenLog::OnScreenLog()
-{
-}
-
-OnScreenLog::~OnScreenLog()
-{
-}
+//OnScreenLog::OnScreenLog()
+//{
+//}
+//
+//OnScreenLog::~OnScreenLog()
+//{
+//}
 
 void OnScreenLog::OnScreenLogDisplay(const FString& InText)
 {
