@@ -8,7 +8,7 @@ public class RTPS : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput" }); //, "UMG", "HUD" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "MultiplayerSessions" }); //, "UMG", "HUD" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

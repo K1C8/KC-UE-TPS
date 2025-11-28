@@ -4,8 +4,10 @@
 #include "RobotCharacter.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerState.h"
 #include "Camera/CameraComponent.h"
 #include "Components/WidgetComponent.h"
+#include "RTPS/HUD/OverheadWidget.h"
 
 // Sets default values
 ARobotCharacter::ARobotCharacter()
@@ -46,6 +48,37 @@ void ARobotCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	PlayerInputComponent->BindAxis("Turn", this, &ARobotCharacter::Turn);
 	PlayerInputComponent->BindAxis("LookUp", this, &ARobotCharacter::LookUp);
 
+}
+
+void ARobotCharacter::OnRep_PlayerState()
+{
+	UpdateOverheadWidget();
+}
+
+void ARobotCharacter::UpdateOverheadWidget()
+{
+	APlayerState* PlayerStateToUpdate = GetPlayerState<APlayerState>();
+
+	if (PlayerStateToUpdate)
+	{
+		FString PlayerName = PlayerStateToUpdate->GetPlayerName();
+		if (!PlayerName.IsEmpty())
+		{
+			UUserWidget* OverheadUserWidget = OverheadWidget->GetUserWidgetObject();
+			if (OverheadUserWidget)
+			{
+				UOverheadWidget* OverheadUserWidgetCasted = Cast<UOverheadWidget>(OverheadUserWidget);
+				if (OverheadUserWidgetCasted)
+				{
+					OverheadUserWidgetCasted->SetDisplayText(PlayerName);
+				}
+				else
+				{
+					UE_LOG(LogActor, Display, TEXT("Failed to cast UOverheadWidget* OverheadWidgetCasted from OverheadWidget of RobotCharacter."));
+				}
+			}
+		}
+	}
 }
 
 void ARobotCharacter::MoveForward(float Value) 

@@ -19,6 +19,10 @@ public:
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	virtual void OnRep_PlayerState() override;
+
+	virtual void UpdateOverheadWidget();
+
 protected:
 	virtual void BeginPlay() override;
 

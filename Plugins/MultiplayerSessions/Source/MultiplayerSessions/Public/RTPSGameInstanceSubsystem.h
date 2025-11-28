@@ -20,5 +20,6 @@ public:
 	FString GetPlayerName();
 
 private:
+	//UPROPERTY()
 	class FString PlayerName;
 };
