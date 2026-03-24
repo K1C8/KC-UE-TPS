@@ -7,6 +7,9 @@
 #include "GameFramework/PlayerState.h"
 #include "Camera/CameraComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Net/UnrealNetwork.h"
+#include "RTPS/Weapon/Weapon.h"
+#include "RTPS/RobotComponent/CombatComponent.h"
 #include "RTPS/HUD/OverheadWidget.h"
 
 // Sets default values
@@ -16,7 +19,7 @@ ARobotCharacter::ARobotCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetMesh());
-	CameraBoom->TargetArmLength = 350.f;
+	CameraBoom->TargetArmLength = 450.f;
 	CameraBoom->bUsePawnControlRotation = true;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -28,6 +31,11 @@ ARobotCharacter::ARobotCharacter()
 
 	OverheadWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("OverheadWidget"));
 	OverheadWidget->SetupAttachment(RootComponent);
+
+	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+	Combat->SetIsReplicated(true);
+	
+	GetCharacterMovement()->bNotifyApex = true;
 }
 
 
@@ -36,6 +44,20 @@ void ARobotCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 }
+
+void ARobotCharacter::NotifyJumpApex()
+{
+	Super::NotifyJumpApex();
+	bIsJumpApexReached = true;
+}
+
+
+void ARobotCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
+
 
 void ARobotCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -48,6 +70,28 @@ void ARobotCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	PlayerInputComponent->BindAxis("Turn", this, &ARobotCharacter::Turn);
 	PlayerInputComponent->BindAxis("LookUp", this, &ARobotCharacter::LookUp);
 
+	PlayerInputComponent->BindAction("Equip", IE_Pressed, this, &ARobotCharacter::EquipButtonPressed);
+
+}
+
+
+void ARobotCharacter::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+	if (Combat)
+	{
+		Combat->Character = this;
+	}
+}
+
+bool ARobotCharacter::GetIsJumpApexReached()
+{
+	return bIsJumpApexReached;
+}
+
+void ARobotCharacter::SetIsJumpApexReached(bool NewIsJumpApexReached)
+{
+	bIsJumpApexReached = NewIsJumpApexReached;
 }
 
 void ARobotCharacter::OnRep_PlayerState()
@@ -81,6 +125,14 @@ void ARobotCharacter::UpdateOverheadWidget()
 	}
 }
 
+void ARobotCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(ARobotCharacter, OverlappingWeapon, COND_OwnerOnly);
+}
+
+
 void ARobotCharacter::MoveForward(float Value) 
 {
 	if (Controller != nullptr && Value != 0.f)
@@ -111,11 +163,67 @@ void ARobotCharacter::LookUp(float Value)
 	AddControllerPitchInput(Value);
 }
 
-void ARobotCharacter::Tick(float DeltaTime)
+void ARobotCharacter::EquipButtonPressed()
 {
-	Super::Tick(DeltaTime);
+	if (Combat)
+	{
+		if (HasAuthority())
+		{
+			Combat->EquipWeapon(OverlappingWeapon);			
+		}
+		else
+		{
+			ServerEquipButtonPressed();
+		}
+	}
+}
+
+void ARobotCharacter::Jump()
+{
+	Super::Jump();
+	GetCharacterMovement()->bNotifyApex = true;
+}
+
+void ARobotCharacter::ServerEquipButtonPressed_Implementation()
+{
+	if (Combat)
+	{
+		Combat->EquipWeapon(OverlappingWeapon);
+	}
+}
+
+void ARobotCharacter::SetOverlappingWeapon(AWeapon* Weapon)
+{
+	// Handle server side of overlapping.
+	if (OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(false);
+	}
+	OverlappingWeapon = Weapon;
+	if (IsLocallyControlled())
+	{
+		// Server only case.
+		if (OverlappingWeapon)
+		{
+			OverlappingWeapon->ShowPickupWidget(true);
+		}
+	}
+}
+
+void ARobotCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
+{
+	if (OverlappingWeapon)
+	{
+		OverlappingWeapon->ShowPickupWidget(true);
+	}
+	if (LastWeapon)
+	{
+		LastWeapon->ShowPickupWidget(false);
+	}
 
 }
+
+
 
 
 

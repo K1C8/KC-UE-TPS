@@ -23,13 +23,25 @@ public:
 
 	virtual void UpdateOverheadWidget();
 
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	virtual void PostInitializeComponents() override;
+	
+	bool GetIsJumpApexReached();
+	void SetIsJumpApexReached(bool NewIsJumpApexReached);
+	
+	
 protected:
 	virtual void BeginPlay() override;
+
+	virtual void NotifyJumpApex() override;
 
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void Turn(float Value);
 	void LookUp(float Value);
+	void EquipButtonPressed();
+	void Jump() override;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -40,7 +52,21 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UWidgetComponent* OverheadWidget;
+	
+	bool bIsJumpApexReached = false;
+
+	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
+	class AWeapon* OverlappingWeapon;
+
+	UFUNCTION()
+	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
+
+	UPROPERTY(VisibleAnywhere)
+	class UCombatComponent* Combat;
+	
+	UFUNCTION(Server, Reliable)
+	void ServerEquipButtonPressed();
 
 public:	
-
+	void SetOverlappingWeapon(AWeapon* Weapon);
 };
