@@ -210,10 +210,12 @@ void ARobotCharacter::SetOverlappingWeapon(AWeapon* Weapon)
 	}
 }
 
+
 void ARobotCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 {
 	if (OverlappingWeapon)
 	{
+		// UE_LOG(LogTemp, Log, TEXT("Showing pickup widget"));
 		OverlappingWeapon->ShowPickupWidget(true);
 	}
 	if (LastWeapon)
@@ -223,6 +225,10 @@ void ARobotCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 
 }
 
+bool ARobotCharacter::IsWeaponEquipped()
+{
+	return (Combat && Combat->EquippedWeapon);
+}
 
 
 

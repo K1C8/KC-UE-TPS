@@ -42,4 +42,7 @@ private:
 
 	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bIsAboutToLand;
+	
+	UPROPERTY(BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	bool bWeaponEquipped;
 };

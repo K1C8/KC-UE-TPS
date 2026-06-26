@@ -36,6 +36,8 @@ void URobotAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	bIsJumping = RobotCharacter->bWasJumping;
 	bIsFalling = RobotCharacter->GetCharacterMovement()->IsFalling();
 
+	bWeaponEquipped = RobotCharacter->IsWeaponEquipped();
+	
 	bIsAccelerating = RobotCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.f ? true : false;
 
 	if (bIsFalling)
