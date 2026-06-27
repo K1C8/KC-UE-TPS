@@ -35,8 +35,10 @@ void URobotAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	bIsInAir = RobotCharacter->GetCharacterMovement()->IsFalling();
 	bIsJumping = RobotCharacter->bWasJumping;
 	bIsFalling = RobotCharacter->GetCharacterMovement()->IsFalling();
+	bIsPreJumping = RobotCharacter->GetIsPreJumping();
 
 	bWeaponEquipped = RobotCharacter->IsWeaponEquipped();
+	bIsCrouched = RobotCharacter->bIsCrouched;
 	
 	bIsAccelerating = RobotCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.f ? true : false;
 
@@ -69,5 +71,6 @@ void URobotAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	{
 		bIsAboutToLand = false;
 		bIsJumping = false;
+		// RobotCharacter->SetIsPreJumping(false);
 	}
 }

@@ -39,9 +39,16 @@ ARobotCharacter::ARobotCharacter()
 }
 
 
+void ARobotCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
+
 void ARobotCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	bIsLanded = true;
 	
 }
 
@@ -50,14 +57,6 @@ void ARobotCharacter::NotifyJumpApex()
 	Super::NotifyJumpApex();
 	bIsJumpApexReached = true;
 }
-
-
-void ARobotCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-
 
 void ARobotCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -71,6 +70,7 @@ void ARobotCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 	PlayerInputComponent->BindAxis("LookUp", this, &ARobotCharacter::LookUp);
 
 	PlayerInputComponent->BindAction("Equip", IE_Pressed, this, &ARobotCharacter::EquipButtonPressed);
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ARobotCharacter::CrouchButtonPressed);
 
 }
 
@@ -94,9 +94,41 @@ void ARobotCharacter::SetIsJumpApexReached(bool NewIsJumpApexReached)
 	bIsJumpApexReached = NewIsJumpApexReached;
 }
 
+bool ARobotCharacter::GetIsPreJumping()
+{
+	return bIsPreJumping;
+}
+
+void ARobotCharacter::SetIsPreJumping(bool InIsPreJumping)
+{
+	bIsPreJumping = InIsPreJumping;
+}
+
 void ARobotCharacter::OnRep_PlayerState()
 {
 	UpdateOverheadWidget();
+}
+
+void ARobotCharacter::Jump()
+{
+	// Prevent re-triggering if already in a pre-jump or currently mid-air
+	if (bIsPreJumping || GetCharacterMovement()->IsFalling())
+	{
+		return;
+	}
+
+	// 1. Enter pre-jump state (AnimBP will read this to play the wind-up animation)
+	bIsPreJumping = true;
+	bIsLanded = false;
+
+	// 2. Set a timer to execute the physical jump after the delay window
+	GetWorldTimerManager().SetTimer(
+		JumpTimerHandle, 
+		this, 
+		&ARobotCharacter::CommitJump, 
+		PreJumpDelay, 
+		false
+	);
 }
 
 void ARobotCharacter::UpdateOverheadWidget()
@@ -178,11 +210,18 @@ void ARobotCharacter::EquipButtonPressed()
 	}
 }
 
-void ARobotCharacter::Jump()
+void ARobotCharacter::CommitJump()
 {
+	bIsPreJumping = false;
 	Super::Jump();
 	GetCharacterMovement()->bNotifyApex = true;
 }
+
+void ARobotCharacter::CrouchButtonPressed()
+{
+	Crouch();
+}
+
 
 void ARobotCharacter::ServerEquipButtonPressed_Implementation()
 {
