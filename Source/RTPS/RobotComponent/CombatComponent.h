@@ -27,12 +27,35 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	void SetAiming(bool bIsAiming);
+	
+	UFUNCTION(Server, Reliable)
+	void ServerSetAiming(bool bIsAiming);
+	
+	UFUNCTION()
+	void OnRep_EquippedWeapon();
+	
+	void GunFireButtonPressed(bool bPressed);
+	void MeleeStrikeButtonPressed(bool bPressed);
 
 private:
-	class ARobotCharacter* Character;
+	UPROPERTY() ARobotCharacter* Character;
+	
+	UPROPERTY(ReplicatedUsing = OnRep_EquippedWeapon)
+	AWeapon* EquippedWeapon;
 	
 	UPROPERTY(Replicated)
-	AWeapon* EquippedWeapon;
+	bool bAiming;
+	
+	UPROPERTY(EditAnywhere)
+	float BaseWalkSpeed;
+	
+	UPROPERTY(EditAnywhere)
+	float AimWalkSpeed;
+	
+	bool bGunFireButtonPressed;
+	
+	bool bMeleeStrikeButtonPressed;
 
 public:	
 

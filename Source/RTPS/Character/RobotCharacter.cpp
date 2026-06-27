@@ -19,7 +19,7 @@ ARobotCharacter::ARobotCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetMesh());
-	CameraBoom->TargetArmLength = 450.f;
+	CameraBoom->TargetArmLength = 500.f;
 	CameraBoom->bUsePawnControlRotation = true;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -34,6 +34,8 @@ ARobotCharacter::ARobotCharacter()
 
 	Combat = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	Combat->SetIsReplicated(true);
+	
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 	
 	GetCharacterMovement()->bNotifyApex = true;
 }
@@ -71,6 +73,12 @@ void ARobotCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 	PlayerInputComponent->BindAction("Equip", IE_Pressed, this, &ARobotCharacter::EquipButtonPressed);
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ARobotCharacter::CrouchButtonPressed);
+	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &ARobotCharacter::AimButtonPressed);
+	PlayerInputComponent->BindAction("Aim", IE_Released, this, &ARobotCharacter::AimButtonReleased);
+	PlayerInputComponent->BindAction("GunFire", IE_Pressed, this, &ARobotCharacter::GunFireButtonPresses);
+	PlayerInputComponent->BindAction("GunFire", IE_Released, this, &ARobotCharacter::GunFireButtonReleased);
+	PlayerInputComponent->BindAction("MeleeStrike", IE_Pressed, this, &ARobotCharacter::MeleeStrikeButtonPressed);
+	PlayerInputComponent->BindAction("MeleeStrike", IE_Released, this, &ARobotCharacter::MeleeStrikeButtonReleased);
 
 }
 
@@ -129,6 +137,44 @@ void ARobotCharacter::Jump()
 		PreJumpDelay, 
 		false
 	);
+}
+
+void ARobotCharacter::PlayMeleeStrikeMontage(const int32 InSection)
+{
+	if (Combat == nullptr || Combat->bAiming || InSection > 2 || InSection < 0)
+	{
+		return;
+	}
+	UAnimInstance* RobotAnimInstance = GetMesh()->GetAnimInstance();
+	if (RobotAnimInstance && MeleeStrikeMontage)
+	{
+		RobotAnimInstance->Montage_Play(MeleeStrikeMontage);
+		FName SectionName;
+		switch (InSection)
+		{
+		case 0:
+			{
+				SectionName = FName("CrossPunch");
+				break;
+			}
+		case 1:
+			{
+				SectionName = FName("HookPunch");
+				break;
+			}
+		case 2:
+			{
+				SectionName = FName("StandingKick");
+				break;
+			}
+		default:
+			{
+				break;
+			}
+		}
+		RobotAnimInstance->Montage_JumpToSection(SectionName);
+	}
+	
 }
 
 void ARobotCharacter::UpdateOverheadWidget()
@@ -197,14 +243,18 @@ void ARobotCharacter::LookUp(float Value)
 
 void ARobotCharacter::EquipButtonPressed()
 {
+	
+	UE_LOG(LogTemp, Log, TEXT("ARobotCharacter EquipButtonPressed() ready to start."));
 	if (Combat)
 	{
 		if (HasAuthority())
 		{
+			UE_LOG(LogTemp, Log, TEXT("ARobotCharacter EquipButtonPressed() with authority."));
 			Combat->EquipWeapon(OverlappingWeapon);			
 		}
 		else
 		{
+			UE_LOG(LogTemp, Log, TEXT("ARobotCharacter EquipButtonPressed() without authority."));
 			ServerEquipButtonPressed();
 		}
 	}
@@ -219,7 +269,62 @@ void ARobotCharacter::CommitJump()
 
 void ARobotCharacter::CrouchButtonPressed()
 {
-	Crouch();
+	if (bIsCrouched)
+	{
+		UnCrouch();
+	}
+	else if (IsWeaponEquipped())
+	{
+		Crouch();
+	}
+}
+
+void ARobotCharacter::AimButtonPressed()
+{
+	if (Combat)
+	{
+		Combat->SetAiming(true);
+	}
+}
+
+void ARobotCharacter::AimButtonReleased()
+{
+	if (Combat)
+	{
+		Combat->SetAiming(false);
+	}
+}
+
+void ARobotCharacter::GunFireButtonPresses()
+{
+	if (Combat)
+	{
+		Combat->GunFireButtonPressed(true);
+	}
+}
+
+void ARobotCharacter::GunFireButtonReleased()
+{
+	if (Combat)
+	{
+		Combat->GunFireButtonPressed(false);
+	}
+}
+
+void ARobotCharacter::MeleeStrikeButtonPressed()
+{
+	if (Combat)
+	{
+		Combat->MeleeStrikeButtonPressed(true);
+	}
+}
+
+void ARobotCharacter::MeleeStrikeButtonReleased()
+{
+	if (Combat)
+	{
+		Combat->MeleeStrikeButtonPressed(false);
+	}
 }
 
 
@@ -267,6 +372,11 @@ void ARobotCharacter::OnRep_OverlappingWeapon(AWeapon* LastWeapon)
 bool ARobotCharacter::IsWeaponEquipped()
 {
 	return (Combat && Combat->EquippedWeapon);
+}
+
+bool ARobotCharacter::IsAiming()
+{
+	return (Combat && Combat->bAiming);
 }
 
 

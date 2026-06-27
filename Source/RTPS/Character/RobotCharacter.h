@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "RobotCharacter.generated.h"
 
+class UCombatComponent;
+
 UCLASS()
 class RTPS_API ARobotCharacter : public ACharacter
 {
@@ -37,6 +39,7 @@ public:
 	void SetIsPreJumping(bool InIsPreJumping);
 
 	virtual void Jump() override;
+	void PlayMeleeStrikeMontage(int32 InSection);
 	
 protected:
 
@@ -47,6 +50,12 @@ protected:
 	void EquipButtonPressed();
 	void CommitJump();
 	void CrouchButtonPressed();
+	void AimButtonPressed();
+	void AimButtonReleased();
+	void GunFireButtonPresses();
+	void GunFireButtonReleased();
+	void MeleeStrikeButtonPressed();
+	void MeleeStrikeButtonReleased();
 	
 	// Timer Handle to track the pre-jump delay
 	FTimerHandle JumpTimerHandle;
@@ -83,13 +92,17 @@ private:
 	void OnRep_OverlappingWeapon(AWeapon* LastWeapon);
 
 	UPROPERTY(VisibleAnywhere)
-	class UCombatComponent* Combat;
+	UCombatComponent* Combat;
 	
 	UFUNCTION(Server, Reliable)
 	void ServerEquipButtonPressed();
+	
+	UPROPERTY(EditAnywhere, Category = Combat) 
+	UAnimMontage* MeleeStrikeMontage;
 
 public:	
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	
 	bool IsWeaponEquipped();
+	bool IsAiming();
 };

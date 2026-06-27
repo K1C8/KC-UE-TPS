@@ -4,6 +4,7 @@
 #include "RobotAnimInstance.h"
 #include "RobotCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 void URobotAnimInstance::NativeInitializeAnimation()
 {
@@ -39,6 +40,23 @@ void URobotAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
 	bWeaponEquipped = RobotCharacter->IsWeaponEquipped();
 	bIsCrouched = RobotCharacter->bIsCrouched;
+	bAiming = RobotCharacter->IsAiming();
+	
+	// Offset Yaw for strafing
+	FRotator AimRotation = RobotCharacter->GetBaseAimRotation();
+	FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(RobotCharacter->GetVelocity());
+	FRotator DeltaRot = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation, AimRotation);
+	DeltaRotation = FMath::RInterpTo(DeltaRotation, DeltaRot, DeltaTime, 5.f);
+	YawOffset = DeltaRotation.Yaw;
+	// YawOffset = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation, AimRotation).Yaw;
+	
+	CharacterRotationLastFrame = CharacterRotation;
+	CharacterRotation = RobotCharacter->GetActorRotation();
+	const FRotator Delta = UKismetMathLibrary::NormalizedDeltaRotator(CharacterRotation, CharacterRotationLastFrame);
+	const float Target = Delta.Yaw / DeltaTime;
+	const float Interp = FMath::FInterpTo(Lean, Target, DeltaTime, 6.f);
+	Lean = FMath::Clamp(Interp, -120.f, 120.f);
+	// UE_LOG(LogTemp, Log, TEXT("RobotCharacter Lean: %f"), Lean);
 	
 	bIsAccelerating = RobotCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.f ? true : false;
 
@@ -54,8 +72,9 @@ void URobotAnimInstance::NativeUpdateAnimation(float DeltaTime)
 		if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params))
 		{
 			float HeightDifference = Start.Z - HitResult.ImpactPoint.Z;
+			float HeightThreshold = bWeaponEquipped ? 480.f : 240.f;
 			// Use HeightDifference here
-			if (HeightDifference < 180.0f && !bIsJumping)
+			if (HeightDifference < HeightThreshold && !bIsJumping)
 			{
 				bIsAboutToLand = true;
 				UE_LOG(LogTemp, Log, TEXT("RobotCharacter about to hit, height difference %f, bIsJumping %hs, GetIsJumpApexReached %hs"), 
