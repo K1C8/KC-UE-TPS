@@ -159,7 +159,7 @@ void ARobotCharacter::Jump()
 	);
 }
 
-void ARobotCharacter::PlayMeleeStrikeMontage(const int32 InSection)
+void ARobotCharacter::PlayMeleeStrikeMontage(const int32 InSection) const
 {
 	if (Combat == nullptr || Combat->bAiming || InSection > 2 || InSection < 0)
 	{
@@ -344,6 +344,34 @@ void ARobotCharacter::AimOffset(float DeltaTime)
 	}
 	
 	AO_Pitch = GetBaseAimRotation().Pitch;
+	if (IsWeaponEquipped() && !IsLocallyControlled())
+	{
+		UE_LOG(LogTemp, Log, TEXT("RobotCharacter not controlled before remap Yaw %f, Pitch %f."), AO_Yaw, AO_Pitch);
+	}
+	
+	FVector2D InRange(270.f, 360.f);
+	FVector2D OutRange(-89.99f, 0.f);
+	// Map yaw/pitch because yaw/pitch is compressed into uint16 during network sync.
+	if (AO_Yaw >= 270.f && !IsLocallyControlled())
+	{
+		AO_Yaw = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Yaw);
+	}
+	else if (AO_Yaw > 90.f)
+	{
+		AO_Yaw = 90.f;
+	}
+	if (AO_Pitch >= 270.f && !IsLocallyControlled())
+	{
+		AO_Pitch = FMath::GetMappedRangeValueClamped(InRange, OutRange, AO_Pitch);
+	}
+	else if (AO_Yaw > 90.f)
+	{
+		AO_Yaw = 90.f;
+	}
+	if (IsWeaponEquipped() && !IsLocallyControlled())
+	{
+		UE_LOG(LogTemp, Log, TEXT("RobotCharacter not controlled after remap Yaw %f, Pitch %f."), AO_Yaw, AO_Pitch);
+	}
 }
 
 void ARobotCharacter::GunFireButtonPresses()
@@ -397,7 +425,7 @@ void ARobotCharacter::UpdateJumpStatus()
 		if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params))
 		{
 			const float HeightDifference = Start.Z - HitResult.ImpactPoint.Z;
-			const float HeightThreshold = IsWeaponEquipped() ? 1200.f : 1240.f;
+			const float HeightThreshold = IsWeaponEquipped() ? 1700.f : 1240.f;
 			// Use HeightDifference here
 			if (HeightDifference < HeightThreshold && !bWasJumping)
 			{

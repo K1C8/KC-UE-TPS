@@ -62,6 +62,21 @@ void UCombatComponent::GunFireButtonPressed(bool bPressed)
 void UCombatComponent::MeleeStrikeButtonPressed(bool bPressed)
 {
 	bMeleeStrikeButtonPressed = bPressed;
+	FDateTime CurrentTime = FDateTime::Now();
+	FTimespan TimeFromLastMeleeStrike = CurrentTime - LastMeleeStrikeTime;
+	if (TimeFromLastMeleeStrike > FTimespan(0, 0, 6))
+	{
+		MeleeStrikeStage = 0;
+	}
+	else
+	{
+		MeleeStrikeStage += 1;
+		MeleeStrikeStage %= 3;
+	}
+	if (Character)
+	{
+		Character->PlayMeleeStrikeMontage(MeleeStrikeStage);
+	}
 }
 
 
@@ -78,6 +93,7 @@ void UCombatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	
 	DOREPLIFETIME(UCombatComponent, EquippedWeapon);
 	DOREPLIFETIME(UCombatComponent, bAiming);
+	DOREPLIFETIME(UCombatComponent, MeleeStrikeStage);
 }
 
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)

@@ -56,8 +56,9 @@ private:
 	bool bGunFireButtonPressed;
 	
 	bool bMeleeStrikeButtonPressed;
-
-public:	
-
-		
+	
+	UPROPERTY(Replicated)
+	int8 MeleeStrikeStage = -1;
+	
+	FDateTime LastMeleeStrikeTime = FDateTime(0);
 };
