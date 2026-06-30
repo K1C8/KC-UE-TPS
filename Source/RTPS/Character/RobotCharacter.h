@@ -41,7 +41,7 @@ public:
 	void SetIsAboutToLand(const bool InIsAboutToLand);
 
 	virtual void Jump() override;
-	void PlayMeleeStrikeMontage(int32 InSection) const;
+	void PlayMeleeStrikeMontage(int32 InStage) const;
 protected:
 
 	void MoveForward(float Value);

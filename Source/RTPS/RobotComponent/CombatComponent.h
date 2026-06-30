@@ -32,6 +32,11 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void ServerSetAiming(bool bIsAiming);
 	
+	void SetMeleeStrikeStage(int8 InStage);
+	
+	UFUNCTION(Server, Reliable)
+	void ServerSetMeleeStrikeStage(int8 InStage);
+	
 	UFUNCTION()
 	void OnRep_EquippedWeapon();
 	
@@ -55,7 +60,7 @@ private:
 	
 	bool bGunFireButtonPressed;
 	
-	bool bMeleeStrikeButtonPressed;
+	bool bIsMeleeStriking = false;
 	
 	UPROPERTY(Replicated)
 	int8 MeleeStrikeStage = -1;

@@ -1,7 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "CombatComponent.h"
-#include "Components/SphereComponent.h"
 #include "Engine/SkeletalMeshSocket.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -45,6 +44,36 @@ void UCombatComponent::ServerSetAiming_Implementation(bool bIsAiming)
 	}
 }
 
+void UCombatComponent::SetMeleeStrikeStage(int8 InStage)
+{
+	UE_LOG(LogTemp, Log, TEXT("[UCombatComponent] SetMeleeStrikeStage() received request, InStage: %hhd."), InStage);
+	if (MeleeStrikeStage == InStage)
+	{
+		return;
+	}
+	if (Character && Character->HasAuthority())
+	{
+		MeleeStrikeStage = InStage;
+	}
+	else if (Character && Character->IsLocallyControlled())
+	{
+		MeleeStrikeStage = InStage;
+		ServerSetMeleeStrikeStage(InStage);
+	}
+	else if (!Character)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[UCombatComponent] SetMeleeStrikeStage() got a nullptr of Character"));
+	}
+}
+
+void UCombatComponent::ServerSetMeleeStrikeStage_Implementation(int8 InStage)
+{
+	if (Character->HasAuthority())
+	{
+		MeleeStrikeStage = InStage;
+	}
+}
+
 void UCombatComponent::OnRep_EquippedWeapon()
 {
 	if (EquippedWeapon && Character)
@@ -61,22 +90,28 @@ void UCombatComponent::GunFireButtonPressed(bool bPressed)
 
 void UCombatComponent::MeleeStrikeButtonPressed(bool bPressed)
 {
-	bMeleeStrikeButtonPressed = bPressed;
+	UE_LOG(LogTemp, Log, TEXT("[UCombatComponent] MeleeStrikeButtonPressed() received request, bPressed: %hhd."), bPressed);
+	bIsMeleeStriking = bPressed;
+	if (!bPressed)
+	{
+		return;
+	}
 	FDateTime CurrentTime = FDateTime::Now();
 	FTimespan TimeFromLastMeleeStrike = CurrentTime - LastMeleeStrikeTime;
-	if (TimeFromLastMeleeStrike > FTimespan(0, 0, 6))
+	if (TimeFromLastMeleeStrike > FTimespan(0, 0, 4.5))
 	{
-		MeleeStrikeStage = 0;
+		SetMeleeStrikeStage(0);
 	}
 	else
 	{
-		MeleeStrikeStage += 1;
-		MeleeStrikeStage %= 3;
+		const int8 NewStage = (MeleeStrikeStage + 1) % 3;
+		SetMeleeStrikeStage(NewStage);
 	}
 	if (Character)
 	{
 		Character->PlayMeleeStrikeMontage(MeleeStrikeStage);
 	}
+	LastMeleeStrikeTime = CurrentTime;
 }
 
 

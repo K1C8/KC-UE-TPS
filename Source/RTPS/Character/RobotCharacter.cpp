@@ -159,9 +159,9 @@ void ARobotCharacter::Jump()
 	);
 }
 
-void ARobotCharacter::PlayMeleeStrikeMontage(const int32 InSection) const
+void ARobotCharacter::PlayMeleeStrikeMontage(const int32 InStage) const
 {
-	if (Combat == nullptr || Combat->bAiming || InSection > 2 || InSection < 0)
+	if (Combat == nullptr || Combat->bAiming || bIsCrouched || InStage > 2 || InStage < 0)
 	{
 		return;
 	}
@@ -169,8 +169,9 @@ void ARobotCharacter::PlayMeleeStrikeMontage(const int32 InSection) const
 	if (RobotAnimInstance && MeleeStrikeMontage)
 	{
 		RobotAnimInstance->Montage_Play(MeleeStrikeMontage);
+		UE_LOG(LogTemp, Log, TEXT("[ARobotCharacter] PlayMeleeStrikeMontage() ready to play stage %d."), InStage);
 		FName SectionName;
-		switch (InSection)
+		switch (InStage)
 		{
 		case 0:
 			{
@@ -194,7 +195,6 @@ void ARobotCharacter::PlayMeleeStrikeMontage(const int32 InSection) const
 		}
 		RobotAnimInstance->Montage_JumpToSection(SectionName);
 	}
-	
 }
 
 void ARobotCharacter::UpdateOverheadWidget()
