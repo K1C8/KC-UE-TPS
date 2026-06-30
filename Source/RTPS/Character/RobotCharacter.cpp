@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/WidgetComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 #include "Net/UnrealNetwork.h"
 #include "RTPS/Weapon/Weapon.h"
 #include "RTPS/RobotComponent/CombatComponent.h"
@@ -20,7 +21,7 @@ ARobotCharacter::ARobotCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetMesh());
-	CameraBoom->TargetArmLength = 500.f;
+	CameraBoom->TargetArmLength = 3000.f;
 	CameraBoom->bUsePawnControlRotation = true;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -47,13 +48,13 @@ ARobotCharacter::ARobotCharacter()
 void ARobotCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	AimOffset(DeltaTime);
+	UpdateJumpStatus();
 }
 
 void ARobotCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	bIsLanded = true;
 	
 }
 
@@ -67,7 +68,7 @@ void ARobotCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ARobotCharacter::Jump);
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &ARobotCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &ARobotCharacter::MoveRight);
@@ -110,9 +111,26 @@ bool ARobotCharacter::GetIsPreJumping()
 	return bIsPreJumping;
 }
 
-void ARobotCharacter::SetIsPreJumping(bool InIsPreJumping)
+bool ARobotCharacter::GetIsAboutToLand()
 {
-	bIsPreJumping = InIsPreJumping;
+	return bIsAboutToLand;
+}
+
+void ARobotCharacter::SetIsAboutToLand(const bool InIsAboutToLand)
+{
+	if (bIsAboutToLand == InIsAboutToLand)
+	{
+		return;
+	}
+	if (HasAuthority())
+	{
+		bIsAboutToLand = InIsAboutToLand;
+	}
+	else if (IsLocallyControlled())
+	{
+		bIsAboutToLand = InIsAboutToLand;
+		ServerSetIsAboutToLand(InIsAboutToLand);
+	}
 }
 
 void ARobotCharacter::OnRep_PlayerState()
@@ -122,15 +140,14 @@ void ARobotCharacter::OnRep_PlayerState()
 
 void ARobotCharacter::Jump()
 {
-	// Prevent re-triggering if already in a pre-jump or currently mid-air
+	// Prevent re-triggering if already in a pre-jump or currently being pulled by gravity
 	if (bIsPreJumping || GetCharacterMovement()->IsFalling())
 	{
 		return;
 	}
 
 	// 1. Enter pre-jump state (AnimBP will read this to play the wind-up animation)
-	bIsPreJumping = true;
-	bIsLanded = false;
+	SetIsPreJumping(true);
 
 	// 2. Set a timer to execute the physical jump after the delay window
 	GetWorldTimerManager().SetTimer(
@@ -211,6 +228,8 @@ void ARobotCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME_CONDITION(ARobotCharacter, OverlappingWeapon, COND_OwnerOnly);
+	DOREPLIFETIME(ARobotCharacter, bIsPreJumping);
+	DOREPLIFETIME(ARobotCharacter, bIsAboutToLand);
 }
 
 
@@ -246,8 +265,7 @@ void ARobotCharacter::LookUp(float Value)
 
 void ARobotCharacter::EquipButtonPressed()
 {
-	
-	UE_LOG(LogTemp, Log, TEXT("ARobotCharacter EquipButtonPressed() ready to start."));
+	// UE_LOG(LogTemp, Log, TEXT("ARobotCharacter EquipButtonPressed() ready to start."));
 	if (Combat)
 	{
 		if (HasAuthority())
@@ -265,7 +283,7 @@ void ARobotCharacter::EquipButtonPressed()
 
 void ARobotCharacter::CommitJump()
 {
-	bIsPreJumping = false;
+	SetIsPreJumping(false);
 	Super::Jump();
 	GetCharacterMovement()->bNotifyApex = true;
 }
@@ -296,6 +314,36 @@ void ARobotCharacter::AimButtonReleased()
 	{
 		Combat->SetAiming(false);
 	}
+}
+
+void ARobotCharacter::AimOffset(float DeltaTime)
+{
+	if (Combat && Combat->EquippedWeapon == nullptr)
+	{
+		return;
+	}
+	
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0.f;
+	float Speed = Velocity.Size();
+	bool bIsFalling = GetCharacterMovement()->IsFalling();
+	
+	if (Speed == 0.f && !bIsFalling)	// Standing still and not jumping
+	{
+		FRotator CurrentAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		FRotator DeltaAimRotation = UKismetMathLibrary::NormalizedDeltaRotator(CurrentAimRotation, StartingAimRotation);
+		bUseControllerRotationYaw = false;
+		AO_Yaw = DeltaAimRotation.Yaw;
+	}
+	
+	if (Speed > 0.f || bIsFalling)	// Moving or jumping
+	{
+		StartingAimRotation = FRotator(0.f, GetBaseAimRotation().Yaw, 0.f);
+		AO_Yaw = 0.f;
+		bUseControllerRotationYaw = true;
+	}
+	
+	AO_Pitch = GetBaseAimRotation().Pitch;
 }
 
 void ARobotCharacter::GunFireButtonPresses()
@@ -330,6 +378,61 @@ void ARobotCharacter::MeleeStrikeButtonReleased()
 	}
 }
 
+void ARobotCharacter::UpdateJumpStatus()
+{
+	if (!HasAuthority() && !IsLocallyControlled())
+	{
+		return;
+	}
+	const bool bIsFalling = GetCharacterMovement()->IsFalling();
+	if (bIsFalling)
+	{
+		bIsJumpApexReached = GetIsJumpApexReached();
+		FHitResult HitResult;
+		FVector Start = GetActorLocation();
+		FVector End = Start + (FVector::DownVector * 4000.0f); // Trace 1000 units down
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this); // Ignore the character itself
+
+		if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params))
+		{
+			const float HeightDifference = Start.Z - HitResult.ImpactPoint.Z;
+			const float HeightThreshold = IsWeaponEquipped() ? 1200.f : 1240.f;
+			// Use HeightDifference here
+			if (HeightDifference < HeightThreshold && !bWasJumping)
+			{
+				SetIsAboutToLand(true);
+				if (bIsJumpApexReached)
+				{
+					SetIsJumpApexReached(false);
+				}
+			}
+		}
+	}
+	if (!bIsFalling)
+	{
+		SetIsAboutToLand(false);
+	}
+}
+
+void ARobotCharacter::SetIsPreJumping(bool InIsPreJumping)
+{
+	bIsPreJumping = InIsPreJumping;
+	ServerSetIsPreJumping(InIsPreJumping);
+}
+
+void ARobotCharacter::ServerSetIsAboutToLand_Implementation(bool InIsAboutToLand)
+{
+	if (HasAuthority())
+	{
+		bIsAboutToLand = InIsAboutToLand;
+	}
+}
+
+void ARobotCharacter::ServerSetIsPreJumping_Implementation(bool InIsPreJumping)
+{
+	bIsPreJumping = InIsPreJumping;
+}
 
 void ARobotCharacter::ServerEquipButtonPressed_Implementation()
 {
@@ -382,6 +485,14 @@ bool ARobotCharacter::IsAiming()
 	return (Combat && Combat->bAiming);
 }
 
+float ARobotCharacter::GetAO_Yaw() const
+{
+	return AO_Yaw;
+}
 
+float ARobotCharacter::GetAO_Pitch() const
+{
+	return AO_Pitch;
+}
 
 

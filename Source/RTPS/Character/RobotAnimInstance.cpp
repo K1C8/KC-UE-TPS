@@ -33,8 +33,8 @@ void URobotAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	Velocity.Z = 0.0f;
 	Speed = Velocity.Size();
 
-	bIsInAir = RobotCharacter->GetCharacterMovement()->IsFalling();
-	bIsJumping = RobotCharacter->bWasJumping;
+	// bIsInAir = RobotCharacter->GetCharacterMovement()->IsFalling();
+	// bool bIsJumping = RobotCharacter->bWasJumping;
 	bIsFalling = RobotCharacter->GetCharacterMovement()->IsFalling();
 	bIsPreJumping = RobotCharacter->GetIsPreJumping();
 
@@ -56,40 +56,10 @@ void URobotAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	const float Target = Delta.Yaw / DeltaTime;
 	const float Interp = FMath::FInterpTo(Lean, Target, DeltaTime, 6.f);
 	Lean = FMath::Clamp(Interp, -120.f, 120.f);
-	// UE_LOG(LogTemp, Log, TEXT("RobotCharacter Lean: %f"), Lean);
+	
+	AO_Yaw = RobotCharacter->GetAO_Yaw();
+	AO_Pitch = RobotCharacter->GetAO_Pitch();
 	
 	bIsAccelerating = RobotCharacter->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0.f ? true : false;
-
-	if (bIsFalling)
-	{
-		bIsJumpApexReached = RobotCharacter->GetIsJumpApexReached();
-		FHitResult HitResult;
-		FVector Start = RobotCharacter->GetActorLocation();
-		FVector End = Start + (FVector::DownVector * 1000.0f); // Trace 1000 units down
-		FCollisionQueryParams Params;
-		Params.AddIgnoredActor(RobotCharacter); // Ignore the character itself
-
-		if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECC_Visibility, Params))
-		{
-			float HeightDifference = Start.Z - HitResult.ImpactPoint.Z;
-			float HeightThreshold = bWeaponEquipped ? 480.f : 240.f;
-			// Use HeightDifference here
-			if (HeightDifference < HeightThreshold && !bIsJumping)
-			{
-				bIsAboutToLand = true;
-				UE_LOG(LogTemp, Log, TEXT("RobotCharacter about to hit, height difference %f, bIsJumping %hs, GetIsJumpApexReached %hs"), 
-					HeightDifference, bIsJumping ? "True" : "False", bIsJumpApexReached ? "True" : "False");
-				if (bIsJumpApexReached)
-				{
-					RobotCharacter->SetIsJumpApexReached(false);
-				}
-			}
-		}
-	}
-	if (!bIsFalling)
-	{
-		bIsAboutToLand = false;
-		bIsJumping = false;
-		// RobotCharacter->SetIsPreJumping(false);
-	}
+	bIsAboutToLand = RobotCharacter->GetIsAboutToLand();
 }

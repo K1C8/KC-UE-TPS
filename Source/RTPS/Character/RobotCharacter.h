@@ -36,11 +36,12 @@ public:
 	void SetIsJumpApexReached(bool NewIsJumpApexReached);
 	
 	bool GetIsPreJumping();
-	void SetIsPreJumping(bool InIsPreJumping);
+	
+	bool GetIsAboutToLand();
+	void SetIsAboutToLand(const bool InIsAboutToLand);
 
 	virtual void Jump() override;
 	void PlayMeleeStrikeMontage(int32 InSection);
-	
 protected:
 
 	void MoveForward(float Value);
@@ -52,10 +53,21 @@ protected:
 	void CrouchButtonPressed();
 	void AimButtonPressed();
 	void AimButtonReleased();
+	void AimOffset(float DeltaTime);
+	
 	void GunFireButtonPresses();
 	void GunFireButtonReleased();
 	void MeleeStrikeButtonPressed();
 	void MeleeStrikeButtonReleased();
+	
+	void UpdateJumpStatus();
+	void SetIsPreJumping(bool InIsPreJumping);
+	
+	UFUNCTION(Server, Reliable)
+	void ServerSetIsPreJumping(bool InIsPreJumping);
+	
+	UFUNCTION(Server, Reliable)
+	void ServerSetIsAboutToLand(bool InIsAboutToLand);
 	
 	// Timer Handle to track the pre-jump delay
 	FTimerHandle JumpTimerHandle;
@@ -69,8 +81,11 @@ protected:
 	float LandingDelay = 0.35f;
 
 	// Exposed to AnimBP to trigger the pre-jump/wind-up state
-	UPROPERTY(BlueprintReadOnly, Category = "Movement|Jump")
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Movement|Jump")
 	bool bIsPreJumping = false;
+	
+	UPROPERTY(BlueprintReadOnly, Replicated, Category = "Movement|Jump")
+	bool bIsAboutToLand = false;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = Camera)
@@ -83,7 +98,6 @@ private:
 	class UWidgetComponent* OverheadWidget;
 	
 	bool bIsJumpApexReached = false;
-	bool bIsLanded = false;
 
 	UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
 	class AWeapon* OverlappingWeapon;
@@ -97,6 +111,9 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerEquipButtonPressed();
 	
+	float AO_Yaw, AO_Pitch;
+	FRotator StartingAimRotation;
+	
 	UPROPERTY(EditAnywhere, Category = Combat) 
 	UAnimMontage* MeleeStrikeMontage;
 
@@ -105,4 +122,7 @@ public:
 	
 	bool IsWeaponEquipped();
 	bool IsAiming();
+	
+	float GetAO_Yaw() const;
+	float GetAO_Pitch() const;
 };
